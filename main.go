@@ -41,6 +41,6 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Erro ao fazer o parse da resposta: %v", erro)
 		}
 
-		fmt.Println(dados)
+		fmt.Fprintln(os.Stderr, "Endereço:",dados.Logradouro, "\nBairro:", dados.Bairro, "\nCEP:", dados.Cep, "\nLocalidade:", dados.Localidade, "\nUF:", dados.Uf)
 	}
 }

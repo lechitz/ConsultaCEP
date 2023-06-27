@@ -2,10 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
-	"os"
 )
 
 type CEP struct {
@@ -22,31 +20,50 @@ type CEP struct {
 }
 
 func main() {
-	for _, cep := range os.Args[1:] {
-		req, erro := http.Get("https://viacep.com.br/ws/" + cep + "/json/")
-		if erro != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao fazer requisição: %v\n", erro)
-		}
-		defer req.Body.Close()
+	http.HandleFunc("/", BuscaCEPHandler)
+	http.ListenAndServe(":8080", nil)
+}
 
-		res, erro := io.ReadAll(req.Body)
-		if erro != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao ler a requisição: %v\n", erro)
-		}
-
-		var dados CEP
-
-		erro = json.Unmarshal(res, &dados)
-		if erro != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao fazer o parse da resposta: %v", erro)
-		}
-
-		file, erro := os.Create("cidade.txt")
-		if erro != nil {
-			fmt.Fprintf(os.Stderr, "Erro ao criar arquivo: %v\n", erro)
-		}
-		defer file.Close()
-		_, erro = file.WriteString(fmt.Sprintf("CEP: %s, Localidade: %s, UF: %s", dados.Cep, dados.Localidade, dados.Uf))
-		fmt.Println("Cidade: ", dados.Localidade)
+func BuscaCEPHandler (w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		w.WriteHeader(http.StatusNotFound)
+		return
 	}
+
+	cepParam := r.URL.Query().Get("cep")
+	if cepParam == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	cep, error := BuscaCEP(cepParam)
+	if error != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(cep)
+}
+
+func BuscaCEP (cep string) (*CEP, error) {
+	resposta, error := http.Get("https://viacep.com.br/ws/" + cep + "/json/")
+	if error != nil {
+		return nil, error
+	}
+	defer resposta.Body.Close()
+
+	body, error := ioutil.ReadAll(resposta.Body)
+	if error != nil {
+		return nil, error
+	}
+
+	var c CEP
+	error = json.Unmarshal(body,&c)
+	if error != nil {
+		return nil, error
+	}
+
+	return &c, nil
 }

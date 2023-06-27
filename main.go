@@ -20,8 +20,9 @@ type CEP struct {
 }
 
 func main() {
-	http.HandleFunc("/", BuscaCEPHandler)
-	http.ListenAndServe(":8080", nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", BuscaCEPHandler)
+	http.ListenAndServe(":8080", mux)
 }
 
 func BuscaCEPHandler (w http.ResponseWriter, r *http.Request) {
